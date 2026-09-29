@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=yes">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>Zoom Multiservices - Ceiling Stock Calculator</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+main{max-width:560px;margin:auto;padding:22px 16px 36px}.brand{padding:8px 2px 20px}.brand h1{font-size:25px;margin:0}.brand p{margin:4px 0 0;color:#6b7280;font-size:14px}
+.panel{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:18px;margin-bottom:14px}
+label{font-weight:700;display:block;margin-bottom:8px}input{width:100%;font-size:22px;padding:14px;border:1px solid #d1d5db;border-radius:12px;outline:none}
+input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px #e0e7ff}
+button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;appearance:none;-webkit-appearance:none;width:100%;min-height:48px;border:0;border-radius:12px;background:#111827;color:white;font-size:17px;font-weight:700;margin-top:12px}
+table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 7px;border-bottom:1px solid #e5e7eb;text-align:right}th{color:#6b7280;font-size:12px}th:first-child,td:first-child{text-align:left}
+.section-title{font-size:16px;font-weight:800;margin:0 0 10px}.big{font-size:20px;font-weight:800;margin-bottom:12px}.small{font-size:12px;color:#6b7280;line-height:1.45;margin-top:12px}.error{color:#b91c1c;font-size:13px;margin-top:8px}
+.actions{display:flex;gap:10px}.actions button{flex:1}.secondary{background:#e5e7eb;color:#111827}
+@media(max-width:390px){table{font-size:12px}th,td{padding:9px 4px}}
+</style>
+</head>
+<body>
+<main>
+<div class="brand">
+<h1>ZOOM MULTISERVICES</h1>
+<p>Ceiling Stock Calculator</p>
+</div>
+
+<section class="panel">
+<label for="sqm">Ceiling area (m²)</label>
+<input id="sqm" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Enter SQM">
+<div class="actions">
+<button id="calc" type="button">Calculate</button>
+<button id="clear" type="button" class="secondary">Clear</button>
+</div>
+<div id="error" class="error" aria-live="polite"></div>
+</section>
+
+<div id="results" hidden>
+<section class="panel"><div class="actions"><button id="sharePdf" type="button">Share Quote as PDF</button><button id="printQuote" type="button" class="secondary">Print Quote</button></div></section>
+<section class="panel">
+<div id="area" class="big"></div>
+<div class="section-title">Calculation</div>
+<div style="overflow-x:auto"><table>
+<thead><tr><th>Material</th><th>Required</th><th>Cartons</th><th>Carton pcs</th><th>Loose</th></tr></thead>
+<tbody id="calcRows"></tbody>
+</table></div>
+<p class="small">Cartons follow the Excel calculation. Loose pieces are the amount outside the cartons, rounded to the nearest whole piece.</p>
+</section>
+
+<section class="panel">
+<div class="section-title">Stock / Issue</div>
+<table><tbody id="issueRows"></tbody></table>
+</section>
+
+<section class="panel">
+<div class="section-title">Board</div>
+<table><tbody><tr><td>Board</td><td id="board"></td></tr></tbody></table>
+</section>
+</div>
+</main>
+
+<script>
+(function(){
+const items=[
+{name:"Main Tee",size:25,rate:.23},
+{name:"Cross Tee",size:75,rate:1.35},
+{name:"Small Cross Tee",size:75,rate:1.35},
+{name:"Wall Angle",size:50,rate:.25}
+];
+const sqm=document.getElementById("sqm"),results=document.getElementById("results"),error=document.getElementById("error");
+function fmt(n,d=2){return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
+function calculate(){
+const area=Number(sqm.value); error.textContent="";
+if(!Number.isFinite(area)||area<=0){results.hidden=true;error.textContent="Enter a SQM value greater than 0.";return;}
+const rows=items.map(x=>{
+const required=area*x.rate;
+const cartons=Math.floor(required/x.size);
+const cartonPcs=cartons*x.size;
+const loose=Math.round(required-cartonPcs);
+return {...x,required,cartons,cartonPcs,loose};
+});
+document.getElementById("area").textContent=fmt(area,2)+" m²";
+document.getElementById("calcRows").innerHTML=rows.map(x=>`<tr><td><strong>${x.name}</strong></td><td>${fmt(x.required)}</td><td><strong>${x.cartons}</strong></td><td>${x.cartonPcs.toLocaleString()}</td><td><strong>${x.loose}</strong></td></tr>`).join("");
+document.getElementById("issueRows").innerHTML=[
+["Main Runner",rows[0].cartons,rows[0].loose],
+["2 Feet",rows[1].cartons,rows[1].loose],
+["4 Feet",rows[2].cartons,rows[2].loose],
+["Wall Angle",rows[3].cartons,rows[3].loose]
+].map(r=>`<tr><td>${r[0]}</td><td>${r[1]} cartons</td><td><strong>${r[2]} pcs</strong></td></tr>`).join("");
+document.getElementById("board").textContent=fmt(area/2.88)+" boards";
+results.hidden=false;
+}
+document.getElementById("calc").addEventListener("click",calculate);
+document.getElementById("printQuote").addEventListener("click",()=>{
+  const area=Number(sqm.value);
+  if(!Number.isFinite(area)||area<=0){error.textContent="Calculate a quote first.";return;}
+  const rows=items.map(x=>{
+    const required=area*x.rate;
+    const cartons=Math.floor(required/x.size);
+    const cartonPcs=cartons*x.size;
+    const loose=Math.round(required-cartonPcs);
+    return {name:x.name,required,cartons,cartonPcs,loose};
+  });
+  const board=area/2.88;
+  const w=window.open("","_blank");
+  if(!w){error.textContent="Allow pop-ups to print the quote.";return;}
+  const escHtml=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  w.document.write(`<!doctype html><html><head><title>Zoom Multiservices Quote</title>
+  <style>
+  body{font-family:Arial,sans-serif;padding:35px;color:#111}
+  h1{margin:0;font-size:24px}h2{font-size:17px;margin-top:25px}
+  .area{font-size:18px;font-weight:bold;margin:15px 0}
+  table{width:100%;border-collapse:collapse;margin-top:10px}
+  th,td{border:1px solid #bbb;padding:9px;text-align:right}
+  th:first-child,td:first-child{text-align:left}
+  th{background:#eee}
+  .footer{margin-top:25px;font-size:12px;color:#666}
+  @media print{body{padding:15mm}}
+  </style></head><body>
+  <h1>ZOOM MULTISERVICES</h1>
+  <div>CEILING STOCK QUOTE</div>
+  <div class="area">Area: ${area.toFixed(2)} m²</div>
+  <h2>Calculation</h2>
+  <table><thead><tr><th>Material</th><th>Required</th><th>Cartons</th><th>Carton PCS</th><th>Loose PCS</th></tr></thead>
+  <tbody>${rows.map(x=>`<tr><td>${escHtml(x.name)}</td><td>${x.required.toFixed(2)}</td><td>${x.cartons}</td><td>${x.cartonPcs}</td><td>${x.loose}</td></tr>`).join("")}</tbody></table>
+  <h2>Stock / Issue</h2>
+  <table><tbody>
+  <tr><td>Main Runner</td><td>${rows[0].cartons} cartons + ${rows[0].loose} loose pcs</td></tr>
+  <tr><td>2 Feet</td><td>${rows[1].cartons} cartons + ${rows[1].loose} loose pcs</td></tr>
+  <tr><td>4 Feet</td><td>${rows[2].cartons} cartons + ${rows[2].loose} loose pcs</td></tr>
+  <tr><td>Wall Angle</td><td>${rows[3].cartons} cartons + ${rows[3].loose} loose pcs</td></tr>
+  </tbody></table>
+  <h2>Board</h2><table><tr><td>Board</td><td>${board.toFixed(2)}</td></tr></table>
+  <div class="footer">Generated by Zoom Multiservices Ceiling Stock Calculator</div>
+  </body></html>`);
+  w.document.close();
+  setTimeout(()=>{w.focus();w.print();},300);
+});
+document.getElementById("clear").addEventListener("click",()=>{sqm.value="";results.hidden=true;error.textContent="";sqm.focus();});
+document.getElementById("sharePdf").addEventListener("click", async ()=>{
+  const area=Number(sqm.value);
+  if(!Number.isFinite(area)||area<=0){error.textContent="Calculate a quote first.";return;}
+
+  const rows=items.map(x=>{
+    const required=area*x.rate;
+    const cartons=Math.floor(required/x.size);
+    const cartonPcs=cartons*x.size;
+    const loose=Math.round(required-cartonPcs);
+    return {name:x.name,required,cartons,cartonPcs,loose};
+  });
+
+  const board=area/2.88;
+
+  /* Build a real PDF with visible text and a simple table. */
+  const esc=s=>String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
+  const contentLines=[
+    "ZOOM MULTISERVICES",
+    "CEILING STOCK QUOTE",
+    "",
+    "AREA: "+area.toFixed(2)+" m2",
+    "",
+    "MATERIAL              REQUIRED   CARTONS   CARTON PCS   LOOSE PCS",
+    "MAIN TEE               "+rows[0].required.toFixed(2)+"     "+rows[0].cartons+"        "+rows[0].cartonPcs+"          "+rows[0].loose,
+    "CROSS TEE              "+rows[1].required.toFixed(2)+"     "+rows[1].cartons+"        "+rows[1].cartonPcs+"          "+rows[1].loose,
+    "SMALL CROSS TEE        "+rows[2].required.toFixed(2)+"     "+rows[2].cartons+"        "+rows[2].cartonPcs+"          "+rows[2].loose,
+    "WALL ANGLE             "+rows[3].required.toFixed(2)+"     "+rows[3].cartons+"        "+rows[3].cartonPcs+"          "+rows[3].loose,
+    "",
+    "STOCK / ISSUE",
+    "MAIN RUNNER:  "+rows[0].cartons+" CARTONS + "+rows[0].loose+" LOOSE PCS",
+    "2 FEET:        "+rows[1].cartons+" CARTONS + "+rows[1].loose+" LOOSE PCS",
+    "4 FEET:        "+rows[2].cartons+" CARTONS + "+rows[2].loose+" LOOSE PCS",
+    "WALL ANGLE:    "+rows[3].cartons+" CARTONS + "+rows[3].loose+" LOOSE PCS",
+    "",
+    "BOARD: "+board.toFixed(2)+" BOARDS"
+  ];
+
+  let stream="BT\n/F1 11 Tf\n";
+  let y=800;
+  for(const line of contentLines){
+    stream+=`1 0 0 1 50 ${y} Tm (${esc(line)}) Tj\n`;
+    y-=24;
+  }
+  stream+="ET";
+
+  const objs=[
+    "<< /Type /Catalog /Pages 2 0 R >>",
+    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>",
+    `<< /Length ${new TextEncoder().encode(stream).length} >>\nstream\n${stream}\nendstream`,
+    "<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>"
+  ];
+
+  let pdf="%PDF-1.4\n";
+  const offsets=[0];
+  objs.forEach((o,i)=>{
+    offsets[i+1]=pdf.length;
+    pdf+=`${i+1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref=pdf.length;
+  pdf+=`xref\n0 ${objs.length+1}\n0000000000 65535 f \n`;
+  for(let i=1;i<=objs.length;i++) pdf+=String(offsets[i]).padStart(10,"0")+" 00000 n \n";
+  pdf+=`trailer\n<< /Size ${objs.length+1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+
+  const blob=new Blob([pdf],{type:"application/pdf"});
+  const file=new File([blob],"Zoom_Multiservices_Ceiling_Quote.pdf",{type:"application/pdf"});
+
+  try{
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({title:"Zoom Multiservices Ceiling Quote",text:"Ceiling stock quote",files:[file]});
+    }else{
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=file.name;a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+    }
+  }catch(e){
+    if(e.name!=="AbortError"){
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement("a");
+      a.href=url;a.download=file.name;a.click();
+      setTimeout(()=>URL.revokeObjectURL(url),1500);
+    }
+  }
+});
+
+sqm.addEventListener("keydown",e=>{if(e.key==="Enter")calculate();});
+function iosTap(el,fn){let last=0;el.addEventListener("touchend",function(e){const now=Date.now();if(now-last<500)return;last=now;e.preventDefault();fn();},{passive:false});}
+iosTap(document.getElementById("calc"),calculate);
+iosTap(document.getElementById("clear"),()=>{sqm.value="";results.hidden=true;error.textContent="";sqm.focus();});
+iosTap(document.getElementById("sharePdf"),()=>document.getElementById("sharePdf").click());
+iosTap(document.getElementById("printQuote"),()=>document.getElementById("printQuote").click());
+if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}
+})();
+</script>
+</body>
+</html>
