@@ -65,6 +65,7 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 7px;
 <tr><td>Full Boxes</td><td id="boardBoxes"></td></tr>
 <tr><td>Loose Pieces</td><td id="boardLoose"></td></tr>
 </tbody></table>
+<p class="small">1 board covers 0.36 m². Total boards are rounded up to the next whole board.</p>
 </section>
 </div>
 </main>
@@ -80,12 +81,15 @@ const items=[
 const sqm=document.getElementById("sqm"),results=document.getElementById("results"),error=document.getElementById("error");
 let boardBoxSize=12;
 function updateBoardDisplay(area){
-  const wholeBoards=Math.ceil(area/2.88);
-  const boxes=Math.floor(wholeBoards/boardBoxSize);
-  const loose=wholeBoards%boardBoxSize;
-  document.getElementById("board").textContent=wholeBoards+" boards";
-  document.getElementById("boardBoxes").textContent=boxes+" boxes ("+(boxes*boardBoxSize)+" pcs)";
-  document.getElementById("boardLoose").textContent=loose+" pcs";
+  // One ceiling board covers 0.36 m².
+  const totalBoards=Math.ceil(area/0.36);
+  const fullBoxes=Math.floor(totalBoards/boardBoxSize);
+  const loosePieces=totalBoards%boardBoxSize;
+
+  document.getElementById("board").textContent=totalBoards+" boards";
+  document.getElementById("boardBoxes").textContent=
+    fullBoxes+" boxes ("+(fullBoxes*boardBoxSize)+" pcs)";
+  document.getElementById("boardLoose").textContent=loosePieces+" pcs";
 }
 function setBoardBoxSize(size){
   boardBoxSize=size;
@@ -129,9 +133,9 @@ document.getElementById("printQuote").addEventListener("click",()=>{
     const loose=Math.round(required-cartonPcs);
     return {name:x.name,required,cartons,cartonPcs,loose};
   });
-  const board=Math.ceil(area/2.88);
-   const boardBoxes=Math.floor(board/boardBoxSize);
-   const boardLoose=board%boardBoxSize;
+  const board=Math.ceil(area/0.36);
+  const boardBoxes=Math.floor(board/boardBoxSize);
+  const boardLoose=board%boardBoxSize;
   const w=window.open("","_blank");
   if(!w){error.textContent="Allow pop-ups to print the quote.";return;}
   const escHtml=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -186,9 +190,9 @@ document.getElementById("sharePdf").addEventListener("click", async ()=>{
     return {name:x.name,required,cartons,cartonPcs,loose};
   });
 
-  const board=Math.ceil(area/2.88);
-   const boardBoxes=Math.floor(board/boardBoxSize);
-   const boardLoose=board%boardBoxSize;
+  const board=Math.ceil(area/0.36);
+  const boardBoxes=Math.floor(board/boardBoxSize);
+  const boardLoose=board%boardBoxSize;
 
   /* Build a real PDF with visible text and a simple table. */
   const esc=s=>String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -210,7 +214,7 @@ document.getElementById("sharePdf").addEventListener("click", async ()=>{
     "4 FEET:        "+rows[2].cartons+" CARTONS + "+rows[2].loose+" LOOSE PCS",
     "WALL ANGLE:    "+rows[3].cartons+" CARTONS + "+rows[3].loose+" LOOSE PCS",
     "",
-    "BOARDS: "+board+" TOTAL",
+    "BOARDS: "+board+" TOTAL (0.6 M2 EACH)",
     "BOX SIZE: "+boardBoxSize+" PCS / BOX",
     "FULL BOXES: "+boardBoxes,
     "LOOSE BOARDS: "+boardLoose
