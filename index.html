@@ -14,7 +14,7 @@ label{font-weight:700;display:block;margin-bottom:8px}input{width:100%;font-size
 input:focus{border-color:#4f46e5;box-shadow:0 0 0 3px #e0e7ff}
 button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;cursor:pointer;appearance:none;-webkit-appearance:none;width:100%;min-height:48px;border:0;border-radius:12px;background:#111827;color:white;font-size:17px;font-weight:700;margin-top:12px}
 table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 7px;border-bottom:1px solid #e5e7eb;text-align:right}th{color:#6b7280;font-size:12px}th:first-child,td:first-child{text-align:left}
-.section-title{font-size:16px;font-weight:800;margin:0 0 10px}.big{font-size:20px;font-weight:800;margin-bottom:12px}.small{font-size:12px;color:#6b7280;line-height:1.45;margin-top:12px}.error{color:#b91c1c;font-size:13px;margin-top:8px}
+.section-title{font-size:16px;font-weight:800;margin:0 0 10px}.big{font-size:20px;font-weight:800;margin-bottom:12px}.small{font-size:12px;color:#6b7280;line-height:1.45;margin-top:12px}.error{color:#b91c1c;font-size:13px;margin-top:8px}.toggle{display:flex;gap:8px;margin:10px 0}.toggle button{margin-top:0;min-height:44px;background:#e5e7eb;color:#111827}.toggle button.active{background:#111827;color:#fff}
 .actions{display:flex;gap:10px}.actions button{flex:1}.secondary{background:#e5e7eb;color:#111827}
 @media(max-width:390px){table{font-size:12px}th,td{padding:9px 4px}}
 </style>
@@ -54,8 +54,17 @@ table{width:100%;border-collapse:collapse;font-size:14px}th,td{padding:11px 7px;
 </section>
 
 <section class="panel">
-<div class="section-title">Board</div>
-<table><tbody><tr><td>Board</td><td id="board"></td></tr></tbody></table>
+<div class="section-title">Boards</div>
+<div class="small" style="margin-top:0">Choose the box size used for packing the boards.</div>
+<div class="toggle" role="group" aria-label="Board box size">
+  <button id="box12" type="button" class="active" aria-pressed="true">12 pieces / box</button>
+  <button id="box8" type="button" aria-pressed="false">8 pieces / box</button>
+</div>
+<table><tbody>
+<tr><td>Total Boards</td><td id="board"></td></tr>
+<tr><td>Full Boxes</td><td id="boardBoxes"></td></tr>
+<tr><td>Loose Pieces</td><td id="boardLoose"></td></tr>
+</tbody></table>
 </section>
 </div>
 </main>
@@ -69,6 +78,24 @@ const items=[
 {name:"Wall Angle",size:50,rate:.25}
 ];
 const sqm=document.getElementById("sqm"),results=document.getElementById("results"),error=document.getElementById("error");
+let boardBoxSize=12;
+function updateBoardDisplay(area){
+  const wholeBoards=Math.ceil(area/2.88);
+  const boxes=Math.floor(wholeBoards/boardBoxSize);
+  const loose=wholeBoards%boardBoxSize;
+  document.getElementById("board").textContent=wholeBoards+" boards";
+  document.getElementById("boardBoxes").textContent=boxes+" boxes ("+(boxes*boardBoxSize)+" pcs)";
+  document.getElementById("boardLoose").textContent=loose+" pcs";
+}
+function setBoardBoxSize(size){
+  boardBoxSize=size;
+  document.getElementById("box12").classList.toggle("active",size===12);
+  document.getElementById("box8").classList.toggle("active",size===8);
+  document.getElementById("box12").setAttribute("aria-pressed",size===12);
+  document.getElementById("box8").setAttribute("aria-pressed",size===8);
+  const area=Number(sqm.value);
+  if(Number.isFinite(area)&&area>0) updateBoardDisplay(area);
+}
 function fmt(n,d=2){return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
 function calculate(){
 const area=Number(sqm.value); error.textContent="";
@@ -88,7 +115,7 @@ document.getElementById("issueRows").innerHTML=[
 ["4 Feet",rows[2].cartons,rows[2].loose],
 ["Wall Angle",rows[3].cartons,rows[3].loose]
 ].map(r=>`<tr><td>${r[0]}</td><td>${r[1]} cartons</td><td><strong>${r[2]} pcs</strong></td></tr>`).join("");
-document.getElementById("board").textContent=fmt(area/2.88)+" boards";
+updateBoardDisplay(area);
 results.hidden=false;
 }
 document.getElementById("calc").addEventListener("click",calculate);
@@ -102,7 +129,9 @@ document.getElementById("printQuote").addEventListener("click",()=>{
     const loose=Math.round(required-cartonPcs);
     return {name:x.name,required,cartons,cartonPcs,loose};
   });
-  const board=area/2.88;
+  const board=Math.ceil(area/2.88);
+   const boardBoxes=Math.floor(board/boardBoxSize);
+   const boardLoose=board%boardBoxSize;
   const w=window.open("","_blank");
   if(!w){error.textContent="Allow pop-ups to print the quote.";return;}
   const escHtml=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
@@ -131,12 +160,19 @@ document.getElementById("printQuote").addEventListener("click",()=>{
   <tr><td>4 Feet</td><td>${rows[2].cartons} cartons + ${rows[2].loose} loose pcs</td></tr>
   <tr><td>Wall Angle</td><td>${rows[3].cartons} cartons + ${rows[3].loose} loose pcs</td></tr>
   </tbody></table>
-  <h2>Board</h2><table><tr><td>Board</td><td>${board.toFixed(2)}</td></tr></table>
+  <h2>Boards</h2><table>
+<tr><td>Total Boards</td><td>${board}</td></tr>
+<tr><td>Box Size</td><td>${boardBoxSize} pcs / box</td></tr>
+<tr><td>Full Boxes</td><td>${boardBoxes} boxes (${boardBoxes*boardBoxSize} pcs)</td></tr>
+<tr><td>Loose Pieces</td><td>${boardLoose} pcs</td></tr>
+</table>
   <div class="footer">Generated by Zoom Multiservices Ceiling Stock Calculator</div>
   </body></html>`);
   w.document.close();
   setTimeout(()=>{w.focus();w.print();},300);
 });
+document.getElementById("box12").addEventListener("click",()=>setBoardBoxSize(12));
+document.getElementById("box8").addEventListener("click",()=>setBoardBoxSize(8));
 document.getElementById("clear").addEventListener("click",()=>{sqm.value="";results.hidden=true;error.textContent="";sqm.focus();});
 document.getElementById("sharePdf").addEventListener("click", async ()=>{
   const area=Number(sqm.value);
@@ -150,7 +186,9 @@ document.getElementById("sharePdf").addEventListener("click", async ()=>{
     return {name:x.name,required,cartons,cartonPcs,loose};
   });
 
-  const board=area/2.88;
+  const board=Math.ceil(area/2.88);
+   const boardBoxes=Math.floor(board/boardBoxSize);
+   const boardLoose=board%boardBoxSize;
 
   /* Build a real PDF with visible text and a simple table. */
   const esc=s=>String(s).replace(/\\/g,"\\\\").replace(/\(/g,"\\(").replace(/\)/g,"\\)");
@@ -172,7 +210,10 @@ document.getElementById("sharePdf").addEventListener("click", async ()=>{
     "4 FEET:        "+rows[2].cartons+" CARTONS + "+rows[2].loose+" LOOSE PCS",
     "WALL ANGLE:    "+rows[3].cartons+" CARTONS + "+rows[3].loose+" LOOSE PCS",
     "",
-    "BOARD: "+board.toFixed(2)+" BOARDS"
+    "BOARDS: "+board+" TOTAL",
+    "BOX SIZE: "+boardBoxSize+" PCS / BOX",
+    "FULL BOXES: "+boardBoxes,
+    "LOOSE BOARDS: "+boardLoose
   ];
 
   let stream="BT\n/F1 11 Tf\n";
@@ -230,6 +271,8 @@ iosTap(document.getElementById("calc"),calculate);
 iosTap(document.getElementById("clear"),()=>{sqm.value="";results.hidden=true;error.textContent="";sqm.focus();});
 iosTap(document.getElementById("sharePdf"),()=>document.getElementById("sharePdf").click());
 iosTap(document.getElementById("printQuote"),()=>document.getElementById("printQuote").click());
+iosTap(document.getElementById("box12"),()=>setBoardBoxSize(12));
+iosTap(document.getElementById("box8"),()=>setBoardBoxSize(8));
 if("serviceWorker" in navigator){navigator.serviceWorker.register("./sw.js").catch(()=>{});}
 })();
 </script>
